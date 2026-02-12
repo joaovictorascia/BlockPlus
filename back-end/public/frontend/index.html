@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Block+</title>
+  <meta name="title" content="Block+">
+  <meta name="description" content="Fast and reliable file hosting service.">
+  <meta name="htmx-config" content='{"selfRequestsOnly": false}'>
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@metamask/onboarding@1.0.1/dist/metamask-onboarding.bundle.js"></script>
+  <link rel="stylesheet" href="./styles.css">
+  <meta name="htmx-config" content='{"methodsThatUseUrlParams":["get"]}'>
+  <style>
+    .htmx-indicator {
+      opacity: 0;
+      visibility: hidden
+    }
+
+    .htmx-request .htmx-indicator,
+    .htmx-request.htmx-indicator {
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 200ms ease-in
+    }
+    
+    .upload-status {
+      margin-top: 1rem;
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+    }
+    
+    .upload-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .upload-error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    /* Updated content area styling to match your stylesheet */
+    #content-area {
+      max-width: 42rem;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 1rem;
+      background-color: var(--background);
+      border-radius: 0.25rem;
+      border: 1px solid #d1d5db;
+      box-sizing: border-box; /* Added to include padding in width calculation */
+    }
+    
+    #content-area h2 {
+      color: var(--foreground);
+      font-weight: 700;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #d1d5db;
+    }
+    
+    #content-area .flex {
+      gap: 0.5rem;
+    }
+    
+    #content-area input[type="file"] {
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.125rem;
+      background-color: var(--background);
+      width: 100%;
+      font-size: 90%;
+      box-sizing: border-box; /* Added to include padding in width calculation */
+    }
+    
+    #content-area input[type="file"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    
+    #content-area button {
+      padding: 0.5rem 1rem;
+      border-radius: 0.125rem;
+      font-weight: 400;
+      font-size: 90%;
+      min-width: fit-content;
+      white-space: nowrap;
+      overflow: hidden;
+      border: 1px solid #d1d5db;
+      cursor: pointer;
+      box-sizing: border-box; /* Added to include padding in width calculation */
+    }
+    
+    #content-area #upload-btn {
+      background-color: var(--success);
+      color: white;
+      border-color: var(--success);
+    }
+    
+    #content-area #upload-btn:hover {
+      background-color: #4cae4c;
+      border-color: #4cae4c;
+    }
+    
+    #content-area button.bg-gray-500 {
+      background-color: #6b7280;
+      color: white;
+      border-color: #6b7280;
+    }
+    
+    #content-area button.bg-gray-500:hover {
+      background-color: #4b5563;
+      border-color: #4b5563;
+    }
+    
+    #content-area .upload-status {
+      padding: 0.5rem;
+      border-radius: 0.125rem;
+      font-weight: 400;
+      margin-top: 1rem;
+    }
+    
+    /* Fix for file input container */
+    .file-input-container {
+      width: 100%;
+      box-sizing: border-box;
+      overflow: hidden; /* Prevent overflow */
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      #content-area {
+        padding: 0.75rem;
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+      }
+      
+      #content-area .flex {
+        flex-direction: column;
+      }
+      
+      #content-area button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen p-1.5" hx-ext="response-targets">
+
+  <div>
+    <p class="text-center text-3xl font-bold mt-1 mb-0">Block+</p>
+    <p class="text-center mt-0">Fast and reliable file hosting service.</p>
+  </div>
+
+  <ul class="navbar text-center p-0 mb-7" hx-ext="preload" id="main-navbar">
+    <li><a href="javascript:void(0)" onclick="handleIndexClick()" preload="mouseover">Upload</a></li>
+    <li><a href="javascript:void(0)" onclick="handleFilesClick()" preload="mouseover">Files</a></li>
+    <li><a href="javascript:void(0)" hx-get="/pages/pricing.html" hx-target="#content-area" hx-swap="innerHTML" preload="mouseover">Pricing</a></li>
+    <li><a href="javascript:void(0)" hx-get="/pages/terms.html" hx-target="#content-area" hx-swap="innerHTML" preload="mouseover">Terms</a></li>
+    <li><a href="javascript:void(0)" hx-get="/pages/contact.html" hx-target="#content-area" hx-swap="innerHTML" preload="mouseover">Contact</a></li>
+    <li><a href="javascript:void(0)" hx-get="/pages/about.html" hx-target="#content-area" hx-swap="innerHTML" preload="mouseover">About</a></li>
+    <!-- Dynamic login/logout item -->
+    <li id="auth-nav-item">
+      <a href="javascript:void(0)" id="auth-link" preload="mouseover">Login</a>
+    </li>
+  </ul>
+
+  <div id="content-area" class="max-w-2xl mx-auto">
+    <!-- Content will be loaded here based on authentication status -->
+  </div>
+
+  <div class="text-center text-danger mt-9">
+    <div id="flash"></div>
+  </div>
+
+  <script>
+    // Authentication utility functions
+    function getToken() {
+      return localStorage.getItem('jwtToken');
+    }
+
+    function getWalletAddress() {
+      return localStorage.getItem('walletAddress');
+    }
+
+    function isLoggedIn() {
+      const token = getToken();
+      const wallet = getWalletAddress();
+      
+      if (!token || !wallet) return false;
+      
+      // Check if token is expired
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.exp > Date.now() / 1000;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('jwtToken');
+      localStorage.removeItem('walletAddress');
+      updateNavigation();
+      loadProtectedContent();
+    }
+
+    function updateNavigation() {
+      const authLink = document.getElementById('auth-link');
+      
+      if (!authLink) {
+        console.error('Auth link element not found');
+        return;
+      }
+      
+      if (isLoggedIn()) {
+        const wallet = getWalletAddress();
+        const shortenedWallet = wallet.substring(0, 6) + '...' + wallet.substring(wallet.length - 4);
+        authLink.textContent = `${shortenedWallet} (Logout)`;
+        authLink.onclick = logout;
+      } else {
+        authLink.textContent = 'Login';
+        authLink.onclick = handleAuthClick;
+      }
+    }
+
+    function handleIndexClick() {
+      if (isLoggedIn()) {
+        // User is logged in, load index content
+        htmx.ajax('GET', '/', { target: '#content-area', swap: 'innerHTML' });
+      } else {
+        // User not logged in, redirect to login
+        htmx.ajax('GET', '/pages/login.html', { target: '#content-area', swap: 'innerHTML' });
+      }
+    }
+
+    function handleFilesClick() {
+      if (isLoggedIn()) {
+        // User is logged in, load files content
+        htmx.ajax('GET', '/pages/files.html', { target: '#content-area', swap: 'innerHTML' });
+      } else {
+        // User not logged in, redirect to login
+        htmx.ajax('GET', '/pages/login.html', { target: '#content-area', swap: 'innerHTML' });
+      }
+    }
+
+    function handleAuthClick() {
+      if (isLoggedIn()) {
+        logout();
+      } else {
+        htmx.ajax('GET', '/pages/login.html', { target: '#content-area', swap: 'innerHTML' });
+      }
+    }
+
+    // Enhanced file upload functionality with loading states
+    async function uploadFile() {
+      const fileInput = document.getElementById('file-input');
+      const uploadBtn = document.getElementById('upload-btn');
+      
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        showUploadStatus('Please select a file to upload.', 'error');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      
+      // Disable button and show loading
+      if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
+        uploadBtn.classList.add('bg-gray-500');
+        uploadBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+      }
+      
+      showUploadStatus('Uploading file, please wait...', 'loading');
+      
+      try {
+        const token = getToken();
+        if (!token) {
+          throw new Error('Not authenticated');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/file/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          showUploadStatus(`File uploaded successfully! Hash: ${result.fid}`, 'success');
+          // Reset form
+          if (fileInput) fileInput.value = '';
+        } else {
+          throw new Error(result.msg || `Upload failed with status: ${response.code}`);
+        }
+        
+      } catch (error) {
+        console.error('Upload error:', error);
+        showUploadStatus(`Upload failed: ${error.message}`, 'error');
+      } finally {
+        // Re-enable button
+        if (uploadBtn) {
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = 'Upload File';
+          uploadBtn.classList.remove('bg-gray-500');
+          uploadBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+        }
+      }
+    }
+
+    function showUploadStatus(message, type) {
+      let uploadStatus = document.getElementById('upload-status');
+      
+      if (!uploadStatus) {
+        uploadStatus = document.createElement('div');
+        uploadStatus.id = 'upload-status';
+        uploadStatus.className = 'upload-status';
+        
+        const contentArea = document.getElementById('content-area');
+        if (contentArea) {
+          contentArea.appendChild(uploadStatus);
+        }
+      }
+      
+      uploadStatus.textContent = message;
+      uploadStatus.className = `upload-status ${type === 'success' ? 'upload-success' : type === 'error' ? 'upload-error' : ''}`;
+      uploadStatus.style.display = 'block';
+      
+      // Auto-hide success messages after 5 seconds
+      if (type === 'success') {
+        setTimeout(() => {
+          uploadStatus.style.display = 'none';
+        }, 5000);
+      }
+    }
+
+    // Function to load protected content
+    function loadProtectedContent() {
+      const contentArea = document.getElementById('content-area');
+      if (!contentArea) {
+        console.error('Content area element not found');
+        return;
+      }
+
+      if (isLoggedIn()) {
+        // Enhanced file upload interface for logged-in users with your original styling
+        contentArea.innerHTML = `
+          <div class="flex flex-col">
+            <h2 class="text-xl font-bold mb-4">Upload File</h2>
+            
+            <div class="file-input-container mb-4">
+              <input type="file" id="file-input" class="p-2 border rounded-sm w-full">
+            </div>
+            
+            <div class="flex gap-2">
+              <button id="upload-btn" onclick="uploadFile()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                Upload File
+              </button>
+              <button onclick="document.getElementById('file-input').value = ''" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                Clear
+              </button>
+            </div>
+            
+            <div id="upload-status" class="mt-4"></div>
+          </div>
+        `;
+        
+      } else {
+        // Redirect directly to login page
+        htmx.ajax('GET', '/pages/login.html', { target: '#content-area', swap: 'innerHTML' });
+      }
+    }
+
+    // Initialize the page when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, initializing authentication...');
+      updateNavigation();
+      loadProtectedContent();
+    });
+
+    // Also initialize if DOM is already loaded
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(() => {
+        updateNavigation();
+        loadProtectedContent();
+      }, 100);
+    }
+
+    console.log("Page initialized");
+  </script>
+</body>
+</html>

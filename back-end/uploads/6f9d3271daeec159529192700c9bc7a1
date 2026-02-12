@@ -1,0 +1,51 @@
+ZERO = lambda f: lambda x: x
+
+sucessor = (lambda n: lambda f: lambda x: f(n(f)(x)))
+
+UM = sucessor(ZERO)
+
+adicao = (lambda m: lambda n: lambda f: lambda x:n(f)(m(f)(x)))
+
+multiplicacao = (lambda m: lambda n: lambda f: lambda x: n(m(f))(x))
+
+exponenciacao = lambda m: lambda n: n(m)
+
+subtracao = lambda m: lambda n: n(predecessor)(m)
+predecessor = lambda n: lambda f: lambda x: n(lambda g: lambda h: h(g(f)))(lambda _: x)(lambda u: u)
+
+is_zero = lambda n: n(lambda m: FALSE)(TRUE)
+leq = lambda m: lambda n: is_zero(subtracao(m)(n))
+geq = lambda m: lambda n: is_zero(subtracao(n)(m))
+
+plus1 = lambda x: x + 1
+church_to_int = lambda n: n(plus1)(0)
+
+def int_to_church(i):
+    if i == 0:
+        return ZERO
+    else:
+        return sucessor(int_to_church(i - 1))
+
+TRUE = lambda x: lambda y: x
+FALSE = lambda x: lambda y: y
+church_to_bool = lambda f: f(True)(False)
+
+# nao sei se funcioanananana
+# relembrando fatorial:
+# 0! = 1
+# Formula geral: n! * (n-1)!
+fatorial = lambda n: (
+    UM if church_to_bool(is_zero(n)) else
+    multiplicacao(n)(fatorial(predecessor(n)))
+)
+
+DOIS = int_to_church(2)
+TRES = int_to_church(3)
+CINCO = int_to_church(5)
+SETE = int_to_church(7)
+ONZE = int_to_church(11)
+TREZE = int_to_church(13)
+DEZESSETE = int_to_church(17)
+DEZENOVE = int_to_church(19)
+VINTEETRES = int_to_church(23)
+VINTEENOVE = int_to_church(29)

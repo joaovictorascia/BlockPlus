@@ -1,0 +1,255 @@
+<div class="max-w-md mx-auto mt-8">
+  <h2 class="text-2xl font-bold text-center mb-6">Login to Block+</h2>
+  
+  <form id="login-form" onsubmit="event.preventDefault(); handleLogin();">
+    <!-- Username Field -->
+    <div class="flex flex-col mb-4">
+      <label for="username" class="mb-2 font-medium">Username</label>
+      <input 
+        type="text" 
+        id="username" 
+        name="username" 
+        required
+        placeholder="Enter your username"
+        class="p-2 border rounded-sm focus:ring focus:ring-blue-300 focus:border-blue-500"
+      >
+    </div>
+
+    <!-- Password Field -->
+    <div class="flex flex-col mb-4">
+      <label for="password" class="mb-2 font-medium">Password</label>
+      <input 
+        type="password" 
+        id="password" 
+        name="password" 
+        required
+        placeholder="Enter your password"
+        class="p-2 border rounded-sm focus:ring focus:ring-blue-300 focus:border-blue-500"
+      >
+    </div>
+
+    <!-- Remember Me & Forgot Password -->
+    <div class="flex justify-between items-center text-sm mb-4">
+      <label class="flex items-center gap-2">
+        <input type="checkbox" id="remember" name="remember">
+        Remember me
+      </label>
+      <a href="javascript:void(0)" class="text-blue hover:underline">Forgot password?</a>
+    </div>
+
+    <!-- Submit Button -->
+    <button 
+      type="submit"
+      id="login-submit-button"
+      class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
+    >
+      Sign In
+    </button>
+
+    <!-- Message Area -->
+    <div id="login-message" class="text-center text-sm mt-4"></div>
+    <div id="login-indicator" class="htmx-indicator hidden text-center">Logging in...</div>
+  </form>
+
+  <!-- Register Link -->
+  <div class="text-center mt-4">
+    <p class="text-sm">
+      Don't have an account? 
+      <a href="javascript:void(0)" 
+        hx-get="/pages/register.html" 
+        hx-target="#content-area" 
+        hx-swap="innerHTML"
+        preload="mouseover"
+        class="text-blue hover:underline">
+        Sign up here
+      </a>
+    </p>
+  </div>
+</div>
+
+<script>
+// Make handleLogin function globally available
+window.handleLogin = async function() {
+  const username = document.getElementById('username')?.value.trim();
+  const password = document.getElementById('password')?.value;
+  const loginMessage = document.getElementById('login-message');
+  const loginIndicator = document.getElementById('login-indicator');
+  const loginSubmitButton = document.getElementById('login-submit-button');
+
+  console.log('handleLogin called', { username, password });
+
+  // Basic validation
+  if (!username || !password) {
+    showLoginMessage('Please enter both username and password', 'error');
+    return;
+  }
+
+  // Show loading state
+  if (loginSubmitButton) {
+    loginSubmitButton.disabled = true;
+    loginSubmitButton.textContent = 'Signing In...';
+  }
+  if (loginIndicator) {
+    loginIndicator.classList.remove('hidden');
+  }
+  if (loginMessage) {
+    loginMessage.innerHTML = '';
+  }
+
+  try {
+    const formData = {
+      username: username,
+      password: password
+    };
+
+    console.log('Attempting login with:', { username });
+
+    const response = await fetch('/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData)
+    });
+
+    const result = await response.json();
+    console.log('Login response:', result);
+
+    if (response.ok) {
+      // Store JWT token and wallet address in localStorage
+      if (result.token && result.wallet) {
+        localStorage.setItem('jwtToken', result.token);
+        localStorage.setItem('walletAddress', result.wallet);
+        console.log('Login successful - JWT token and wallet address stored in localStorage');
+        
+        showLoginMessage('Login successful! Redirecting...', 'success');
+        
+        // Update navigation to show user is logged in
+        if (window.updateNavigation) {
+          window.updateNavigation();
+        }
+        
+        // DO NOT reset button state - keep it disabled
+        // Hide the indicator but keep button disabled
+        if (loginIndicator) {
+          loginIndicator.classList.add('hidden');
+        }
+        
+        // Redirect to index page after successful login
+        setTimeout(() => {
+          htmx.ajax('GET', '/', { target: '#content-area', swap: 'innerHTML' });
+        }, 1000);
+        
+        return; // Exit early without running finally block
+      } else {
+        console.warn('Missing token or wallet in response:', result);
+        showLoginMessage('Login response incomplete. Please try again.', 'error');
+      }
+    } else {
+      showLoginMessage(`Error: ${result.message || 'Login failed'}`, 'error');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    showLoginMessage(`Network error: ${error.message}`, 'error');
+  }
+
+  // Only reset button state if login failed (moved from finally block)
+  resetLoginButton();
+}
+
+function resetLoginButton() {
+  const loginSubmitButton = document.getElementById('login-submit-button');
+  const loginIndicator = document.getElementById('login-indicator');
+  
+  if (loginSubmitButton) {
+    loginSubmitButton.disabled = false;
+    loginSubmitButton.textContent = 'Sign In';
+  }
+  if (loginIndicator) {
+    loginIndicator.classList.add('hidden');
+  }
+}
+
+function showLoginMessage(message, type) {
+  const loginMessage = document.getElementById('login-message');
+  if (!loginMessage) return;
+  
+  const colorClass = type === 'success' ? 'text-green-500 bg-green-50 border-green-200' : 'text-red-500 bg-red-50 border-red-200';
+  
+  loginMessage.innerHTML = `
+    <div class="${colorClass} p-2 rounded border text-center">
+      ${message}
+    </div>
+  `;
+}
+
+// Authentication utility functions
+window.getToken = function() {
+  return localStorage.getItem('jwtToken');
+}
+
+window.getWalletAddress = function() {
+  return localStorage.getItem('walletAddress');
+}
+
+window.isLoggedIn = function() {
+  const token = getToken();
+  const wallet = getWalletAddress();
+  
+  if (!token || !wallet) return false;
+  
+  // Check if token is expired
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp > Date.now() / 1000;
+  } catch (e) {
+    return false;
+  }
+}
+
+window.updateNavigation = function() {
+  const authLink = document.getElementById('auth-link');
+  
+  if (!authLink) {
+    console.error('Auth link element not found');
+    return;
+  }
+  
+  if (isLoggedIn()) {
+    const wallet = getWalletAddress();
+    const shortenedWallet = wallet.substring(0, 6) + '...' + wallet.substring(wallet.length - 4);
+    authLink.textContent = `${shortenedWallet} (Logout)`;
+    authLink.onclick = logout;
+  } else {
+    authLink.textContent = 'Login';
+    authLink.onclick = handleAuthClick;
+  }
+}
+
+window.logout = function() {
+  localStorage.removeItem('jwtToken');
+  localStorage.removeItem('walletAddress');
+  updateNavigation();
+  // Redirect to login page after logout
+  htmx.ajax('GET', '/pages/login.html', { target: '#content-area', swap: 'innerHTML' });
+}
+
+window.handleAuthClick = function() {
+  if (isLoggedIn()) {
+    logout();
+  } else {
+    htmx.ajax('GET', '/pages/login.html', { target: '#content-area', swap: 'innerHTML' });
+  }
+}
+
+// Check if user is already logged in when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Login page loaded');
+  
+  if (isLoggedIn()) {
+    console.log('User is already logged in, redirecting to index...');
+    htmx.ajax('GET', '/', { target: '#content-area', swap: 'innerHTML' });
+    return;
+  }
+});
+</script>

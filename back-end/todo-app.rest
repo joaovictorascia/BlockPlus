@@ -1,0 +1,24 @@
+
+### Register a user POST /AUTH/REGISTER
+POST http://localhost:5003/auth/register
+Content-Type: application/json
+
+{
+    "username": "luana",
+    "password": "123123123",
+    "wallet": "0xB8dbaAb6d1F276953bcfE131e3795DA2CC830032"
+}
+
+
+### Debug DB
+GET http://localhost:5003/file/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzYyNDcxMzU4LCJleHAiOjE3NjI1NTc3NTh9.EDopzUv-zqaCrhczUpfwolKThP3I7iNxe4gtaRLUeUE
+
+### Login a user POST /AUTH/LOGIN
+POST http://localhost:5003/auth/login
+Content-Type: application/json
+
+{
+    "username": "joao",
+    "password": "123123123"
+}

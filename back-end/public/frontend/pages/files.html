@@ -1,0 +1,492 @@
+<div id="files-content">
+    <h3>Index of /Wallet-ID</h3>
+
+    <div id="loading" class="loading">Loading files...</div>
+    <div id="error" class="error" style="display: none;"></div>
+
+    <table id="filesTable" style="display: none;">
+        <tbody>
+            <tr>
+                <th width="35%" align="left"><a href="">Hash</a></th>
+                <th width="30%" align="left"><a href="">Created At</a></th>
+                <th width="15%" align="right"><a href="">Size</a></th>
+                <th width="20%" align="center"><a href="">Actions</a></th>
+            </tr>
+            <tr>
+                <th colspan="4">
+                    <hr>
+                </th>
+            </tr>
+            <!-- Files will be dynamically inserted here -->
+            <tr>
+                <th colspan="4">
+                    <hr>
+                </th>
+            </tr>
+        </tbody>
+    </table>
+    <span style="text-align: center">If your file is not being exhibited correctly, please wait until blockchain can
+        allocate resources. It may take a while.</span>
+
+    <script>
+        (function () {
+            let fetchTimeout;
+
+            async function fetchFiles() {
+                try {
+                    console.log('Starting fetchFiles...');
+
+                    // Get JWT token from localStorage
+                    const jwtToken = localStorage.getItem('jwtToken');
+                    console.log('JWT Token exists:', !!jwtToken);
+
+                    if (!jwtToken) {
+                        throw new Error('Not authenticated. Please log in again.');
+                    }
+
+                    console.log('Making request to: http://127.0.0.1:5003/file/');
+
+                    const response = await fetch('/file/', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${jwtToken}`
+                        },
+                    });
+
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            // Token might be expired, redirect to login
+                            localStorage.removeItem('jwtToken');
+                            console.log('Token expired, redirecting to login...');
+                            if (typeof htmx !== 'undefined') {
+                                htmx.ajax('GET', '/', { target: '#content-area', swap: 'innerHTML' });
+                            } else {
+                                window.location.href = '/';
+                            }
+                            return;
+                        }
+
+                        const errorText = await response.text();
+                        console.error('Response error text:', errorText);
+                        throw new Error(`Failed to fetch files: ${response.status} ${response.statusText}. ${errorText}`);
+                    }
+
+                    const files = await response.json();
+                    console.log('Files received:', files);
+                    displayFiles(files);
+
+                } catch (error) {
+                    console.error('Error fetching files:', error);
+                    showError(error.message);
+                }
+            }
+
+            // function displayFiles(files) {
+            //     const loadingElement = document.getElementById('loading');
+            //     const tableElement = document.getElementById('filesTable');
+            //     const errorElement = document.getElementById('error');
+
+            //     // Hide loading and any previous errors
+            //     loadingElement.style.display = 'none';
+            //     errorElement.style.display = 'none';
+            //     tableElement.style.display = 'table';
+
+            //     const tbody = tableElement.querySelector('tbody');
+
+            //     // Find the position to insert files (after the header hr row)
+            //     const headerHrRow = tbody.querySelector('tr:nth-child(2)'); // 2nd row is the hr after headers
+
+            //     // Clear any existing files
+            //     const existingFileRows = tbody.querySelectorAll('tr.file-row');
+            //     existingFileRows.forEach(row => row.remove());
+
+            //     if (!files || files.length === 0) {
+            //         // Add a "no files" message
+            //         const noFilesRow = document.createElement('tr');
+            //         noFilesRow.className = 'file-row';
+            //         noFilesRow.innerHTML = `
+            //             <td colspan="4" style="text-align: center; color: #666; padding: 20px;">
+            //                 No files found. Upload some files to get started.
+            //             </td>
+            //         `;
+            //         headerHrRow.after(noFilesRow);
+            //         return;
+            //     }
+
+            //     // Add each file as a row
+            //     files.forEach(file => {
+            //         const row = document.createElement('tr');
+            //         row.className = 'file-row';
+
+            //         // Format the date
+            //         const createdAt = file.createdAt ? new Date(file.createdAt).toLocaleString() : 'Unknown';
+
+            //         // Format the size
+            //         const sizeFormatted = formatFileSize(file.size);
+
+            //         // Shorten hash for display (first 8 chars + last 8 chars)
+            //         const hashShort = file.hash ?
+            //             `${file.hash.substring(0, 8)}...${file.hash.substring(file.hash.length - 8)}` :
+            //             'N/A';
+
+            //         row.innerHTML = `
+            //             <td>
+            //                 <a href="#" class="hash-link" title="${file.hash || 'No hash'}">
+            //                     <span class="hash">${hashShort}</span>
+            //                 </a>
+            //             </td>
+            //             <td>${createdAt}</td>
+            //             <td class="size" align="right">${sizeFormatted}</td>
+            //             <td align="center">
+            //                 <button class="copy-hash-btn" data-hash="${file.hash || ''}" title="Copy Hash ID">
+            //                     📋
+            //                 </button>
+            //             </td>
+            //         `;
+
+            //         // Add click handler for hash link - trigger download
+            //         const hashLink = row.querySelector('.hash-link');
+            //         hashLink.addEventListener('click', (e) => {
+            //             e.preventDefault();
+            //             if (file.hash) {
+            //                 downloadFile(file.hash);
+            //             }
+            //         });
+
+            //         // Add click handler for copy button
+            //         const copyButton = row.querySelector('.copy-hash-btn');
+            //         copyButton.addEventListener('click', (e) => {
+            //             e.preventDefault();
+            //             e.stopPropagation(); // Prevent triggering other click events
+            //             copyHashToClipboard(file.hash, copyButton);
+            //         });
+
+            //         headerHrRow.after(row);
+            //     });
+            // }
+
+            function displayFiles(files) {
+                const loadingElement = document.getElementById('loading');
+                const tableElement = document.getElementById('filesTable');
+                const errorElement = document.getElementById('error');
+
+                // Hide loading and any previous errors
+                loadingElement.style.display = 'none';
+                errorElement.style.display = 'none';
+                tableElement.style.display = 'table';
+
+                const tbody = tableElement.querySelector('tbody');
+
+                // Find the position to insert files (after the header hr row)
+                const headerHrRow = tbody.querySelector('tr:nth-child(2)'); // 2nd row is the hr after headers
+
+                // Clear any existing files
+                const existingFileRows = tbody.querySelectorAll('tr.file-row');
+                existingFileRows.forEach(row => row.remove());
+
+                if (!files || files.length === 0) {
+                    // Add a "no files" message
+                    const noFilesRow = document.createElement('tr');
+                    noFilesRow.className = 'file-row';
+                    noFilesRow.innerHTML = `
+            <td colspan="4" style="text-align: center; color: #666; padding: 20px;">
+                No files found. Upload some files to get started.
+            </td>
+        `;
+                    headerHrRow.after(noFilesRow);
+                    return;
+                }
+
+                // Add each file as a row
+                files.forEach(file => {
+                    const row = document.createElement('tr');
+                    row.className = 'file-row';
+
+                    // Format the date
+                    const createdAt = file.createdAt ? new Date(file.createdAt).toLocaleString() : 'Unknown';
+
+                    // Format the size
+                    const sizeFormatted = formatFileSize(file.size);
+
+                    // Get filename - use original_filename if available, otherwise fallback to hash
+                    const filename = file.original_filename || file.filename || 'Unknown File';
+
+                    // Shorten filename if it's too long for display
+                    const displayFilename = filename.length > 50 ?
+                        filename.substring(0, 47) + '...' : filename;
+
+                    row.innerHTML = `
+                    <td>
+                        <a href="#" class="filename-link" title="${filename}">
+                            <span class="filename">${displayFilename}</span>
+                        </a>
+                    </td>
+                    <td>${createdAt}</td>
+                    <td class="size" align="right">${sizeFormatted}</td>
+                    <td align="center">
+                        <button class="copy-hash-btn" data-hash="${file.hash || ''}" title="Copy Hash ID">
+                            📋
+                        </button>
+                    </td>
+                    `;
+
+                    // Add click handler for filename link - trigger download
+                    const filenameLink = row.querySelector('.filename-link');
+                    filenameLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (file.hash) {
+                            downloadFile(file.hash);
+                        }
+                    });
+
+                    // Add click handler for copy button
+                    const copyButton = row.querySelector('.copy-hash-btn');
+                    copyButton.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation(); // Prevent triggering other click events
+                        copyHashToClipboard(file.hash, copyButton);
+                    });
+
+                    headerHrRow.after(row);
+                });
+            }
+
+            function downloadFile(hash) {
+                // Get JWT token for authorization
+                const jwtToken = localStorage.getItem('jwtToken');
+                if (!jwtToken) {
+                    alert('Please log in again to download files.');
+                    return;
+                }
+
+                // Create download URL
+                const downloadUrl = `/file/download/${hash}`;
+
+                console.log('Initiating download for hash:', hash);
+
+                // Create a hidden anchor tag to trigger download
+                const a = document.createElement('a');
+                a.style.display = 'none';
+
+                // Add authorization header via fetch and blob approach
+                fetch(downloadUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`
+                    }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+                        }
+
+                        // Extract the filename from the 'Content-Disposition' header
+                        const disposition = response.headers.get('Content-Disposition');
+                        let filename = 'downloaded_file'; // Default filename
+
+                        if (disposition && disposition.indexOf('attachment') !== -1) {
+                            const matches = /filename="([^"]+)"/.exec(disposition);
+                            if (matches != null && matches[1]) {
+                                filename = matches[1]; // Extract filename from the header
+                            }
+                        }
+
+                        // Return blob and filename
+                        return response.blob().then(blob => ({ blob, filename }));
+                    })
+                    .then(({ blob, filename }) => {
+                        // Create object URL and trigger download
+                        const url = window.URL.createObjectURL(blob);
+                        a.href = url;
+                        a.setAttribute('download', filename); // Set the filename here
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+
+                        console.log('Download initiated successfully');
+                    })
+                    .catch(error => {
+                        console.error('Download error:', error);
+                        alert('Download failed: ' + error.message);
+                    });
+            }
+
+
+            function copyHashToClipboard(hash, button) {
+                if (!hash) {
+                    showTempMessage('No hash available to copy', 'error');
+                    return;
+                }
+
+                // Use the Clipboard API
+                navigator.clipboard.writeText(hash).then(() => {
+                    // Show success feedback
+                    const originalHTML = button.innerHTML;
+                    button.innerHTML = '✅';
+                    button.style.backgroundColor = '#d1fae5';
+                    button.style.color = '#065f46';
+
+                    // Revert after 2 seconds
+                    setTimeout(() => {
+                        button.innerHTML = originalHTML;
+                        button.style.backgroundColor = '';
+                        button.style.color = '';
+                    }, 2000);
+
+                    console.log('Hash copied to clipboard:', hash);
+                }).catch(err => {
+                    console.error('Failed to copy hash:', err);
+
+                    // Fallback method for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = hash;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+
+                        // Show success feedback even with fallback
+                        const originalHTML = button.innerHTML;
+                        button.innerHTML = '✅';
+                        button.style.backgroundColor = '#d1fae5';
+                        button.style.color = '#065f46';
+
+                        setTimeout(() => {
+                            button.innerHTML = originalHTML;
+                            button.style.backgroundColor = '';
+                            button.style.color = '';
+                        }, 2000);
+
+                        console.log('Hash copied to clipboard (fallback):', hash);
+                    } catch (fallbackErr) {
+                        console.error('Fallback copy failed:', fallbackErr);
+                        showTempMessage('Failed to copy hash', 'error');
+                    }
+                    document.body.removeChild(textArea);
+                });
+            }
+
+            function showTempMessage(message, type) {
+                // Create temporary message element
+                const messageDiv = document.createElement('div');
+                messageDiv.textContent = message;
+                messageDiv.style.position = 'fixed';
+                messageDiv.style.top = '20px';
+                messageDiv.style.right = '20px';
+                messageDiv.style.padding = '10px 15px';
+                messageDiv.style.borderRadius = '4px';
+                messageDiv.style.zIndex = '1000';
+                messageDiv.style.fontSize = '14px';
+
+                if (type === 'error') {
+                    messageDiv.style.backgroundColor = '#fef2f2';
+                    messageDiv.style.color = '#dc2626';
+                    messageDiv.style.border = '1px solid #fecaca';
+                } else {
+                    messageDiv.style.backgroundColor = '#f0fdf4';
+                    messageDiv.style.color = '#16a34a';
+                    messageDiv.style.border = '1px solid #bbf7d0';
+                }
+
+                document.body.appendChild(messageDiv);
+
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    if (document.body.contains(messageDiv)) {
+                        document.body.removeChild(messageDiv);
+                    }
+                }, 3000);
+            }
+
+            function formatFileSize(bytes) {
+                if (bytes === 0 || !bytes) return '0 B';
+
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function showError(message) {
+                const loadingElement = document.getElementById('loading');
+                const errorElement = document.getElementById('error');
+
+                loadingElement.style.display = 'none';
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+
+                // Add retry button
+                const retryButton = document.createElement('button');
+                retryButton.textContent = 'Retry';
+                retryButton.style.marginLeft = '10px';
+                retryButton.onclick = fetchFiles;
+                errorElement.appendChild(retryButton);
+            }
+
+            function fetchFilesWithTimeout() {
+                // Clear any existing timeout
+                if (fetchTimeout) {
+                    clearTimeout(fetchTimeout);
+                }
+
+                // Set a timeout to show error if fetch takes too long
+                fetchTimeout = setTimeout(() => {
+                    const loadingElement = document.getElementById('loading');
+                    if (loadingElement.style.display !== 'none') {
+                        showError('Request timed out. Please check your connection and try again.');
+                    }
+                }, 10000); // 10 second timeout
+
+                fetchFiles().finally(() => {
+                    // Clear the timeout if fetch completes
+                    clearTimeout(fetchTimeout);
+                });
+            }
+
+            // Fetch files when this div is loaded
+            fetchFilesWithTimeout();
+        })();
+    </script>
+
+    <style>
+        .copy-hash-btn {
+            border: none;
+            background: none;
+            padding: 6px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+        }
+
+        .copy-hash-btn:hover {
+            background-color: #e5e7eb;
+            border-color: #9ca3af;
+            transform: scale(1.05);
+        }
+
+        .copy-hash-btn:active {
+            transform: scale(0.95);
+        }
+
+        .hash-link {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .hash-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</div>
