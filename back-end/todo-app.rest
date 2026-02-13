@@ -4,9 +4,9 @@ POST http://localhost:5003/auth/register
 Content-Type: application/json
 
 {
-    "username": "luana",
+    "username": "alsojulha",
     "password": "123123123",
-    "wallet": "0xB8dbaAb6d1F276953bcfE131e3795DA2CC830032"
+    "wallet": "cXjbRGENz4kNpDJPGn8mpYmW8XXrXMaHgep86fC1eK4XMegTK"
 }
 
 

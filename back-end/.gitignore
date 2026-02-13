@@ -1,4 +1,7 @@
 node_modules
 build
 npm-debug.log
+database.sqlite
 .DS_Store
+.package-lock.json
+uploads

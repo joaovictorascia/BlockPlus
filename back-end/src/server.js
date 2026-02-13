@@ -1,38 +1,34 @@
 import express from 'express'
 import cors from 'cors'
-import path from 'path'
-import { fileURLToPath } from 'url'
 import authRoutes from './routes/authRoutes.js'
 import fileRoutes from './routes/fileRoutes.js'
 import authMiddleware from './middleware/authMiddleware.js'
 
 const app = express()
-const PORT = process.env.PORT || 5003
-
-// Para usar __dirname com ES modules
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const PORT = process.env.PORT || 5000
 
 // Middleware
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 app.use(cors())
 
-// ✅ CAMINHO CORRIGIDO - agora aponta para a pasta public/mock_front_end_use_the_other
-app.use(express.static(path.join(__dirname, '../public/frontend')))
-
-// Routes
+// Routes - APENAS API
 app.use('/auth', authRoutes)
 app.use('/file', authMiddleware, fileRoutes)
 
-// ✅ Rota fallback corrigida
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/frontend/index.html'))
+// Health check (opcional, útil para monitoramento)
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', message: 'API is running' })
+})
+
+// 404 handler para endpoints que não existem
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Not found',
+  })
 })
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Server has started on port: ${PORT}`)
-    // Para debug - mostra o caminho correto
-    console.log(`Frontend path: ${path.join(__dirname, '../public/frontend')}`)
+    console.log(`API Server running on port: ${PORT}`)
 })

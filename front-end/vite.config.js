@@ -16,17 +16,19 @@ export default defineConfig({
     react(),
   ],
   server: {
+    allowedHosts: true,
+    port: 3000,
     proxy: {
       '/auth': {
-        target: 'http://localhost:5003', // Seu servidor Express
+        target: 'http://localhost:5000', // Seu servidor Express
         changeOrigin: true,
       },
       '/api': {
-        target: 'http://localhost:5003',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
       '/file': {
-        target: 'http://localhost:5003',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       }
     }
